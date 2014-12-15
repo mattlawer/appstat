@@ -2,6 +2,7 @@
 #import <Foundation/Foundation.h>
 
 static NSArray *countries = nil;
+static NSOperationQueue *operationQueue = nil;
 
 static NSURL* searchURL(NSString *countryCode, NSString *search) {
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/search?term=%@&country=%@&entity=software",search,countryCode]];
@@ -145,11 +146,17 @@ int main(int argc, char *const argv[]) {
         
         countries = @[@"AL", @"DZ", @"AO", @"AI", @"AG", @"AR", @"AM", @"AU", @"AT", @"AZ", @"BS", @"BH", @"BB", @"BY", @"BE", @"BZ", @"BJ", @"BM", @"BT", @"BO", @"BW", @"BR", @"VG", @"BN", @"BG", @"BF", @"KH", @"CA", @"CV", @"KY", @"TD", @"CL", @"CN", @"CO", @"CG", @"CR", @"HR", @"CY", @"CZ", @"DK", @"DM", @"DO", @"EC", @"EG", @"SV", @"EE", @"FJ", @"FI", @"FR", @"GM", @"DE", @"GH", @"GR", @"GD", @"GT", @"GW", @"GY", @"HN", @"HK", @"HU", @"IS", @"IN", @"ID", @"IE", @"IL", @"IT", @"JM", @"JP", @"JO", @"KZ", @"KE", @"KR", @"KW", @"KG", @"LA", @"LV", @"LB", @"LR", @"LT", @"LU", @"MO", @"MK", @"MG", @"MW", @"MY", @"ML", @"MT", @"MR", @"MU", @"MX", @"FM", @"MD", @"MN", @"MS", @"MZ", @"NA", @"NP", @"NL", @"NZ", @"NI", @"NE", @"NG", @"NO", @"OM", @"PK", @"PW", @"PA", @"PG", @"PY", @"PE", @"PH", @"PL", @"PT", @"QA", @"RO", @"RU", @"ST", @"SA", @"SN", @"SC", @"SL", @"SG", @"SK", @"SI", @"SB", @"ZA", @"ES", @"LK", @"KN", @"LC", @"VC", @"SR", @"SZ", @"SE", @"CH", @"TW", @"TJ", @"TZ", @"TH", @"TT", @"TN", @"TR", @"TM", @"TC", @"UG", @"GB", @"UA", @"AE", @"UY", @"US", @"UZ", @"VE", @"VN", @"YE", @"ZW"];
         
+        operationQueue = [[NSOperationQueue alloc] init];
+        operationQueue.name = @"Operation Queue";
+        operationQueue.MaxConcurrentOperationCount = 10;
+        
         if (rflag) {
             scanReviews([NSString stringWithFormat:@"%s",appid]);
         }else {
             scanTopApps([NSString stringWithFormat:@"%s",appid], genre, paid, listsize);
         }
+        
+        [operationQueue waitUntilAllOperationsAreFinished];
     }
     return 0;
 }
@@ -178,13 +185,9 @@ static NSArray* getEntries(id jsonObject) {
 static void scanTopApps(NSString *appid, int genre, BOOL paid, int listsize) {
     printf("search for appID:%s\nin %d top %s%s\n", appid.UTF8String, listsize, paid ? "paid" : "free", genre == 0 ? "" : [NSString stringWithFormat:@" %s",genreName(genre).UTF8String].UTF8String);
     
-    NSOperationQueue *myQueue = [[NSOperationQueue alloc] init];
-    myQueue.name = @"Download Queue";
-    myQueue.MaxConcurrentOperationCount = 10;
-    
     for (NSString *country in countries) {
         
-        [myQueue addOperationWithBlock:^{
+        [operationQueue addOperationWithBlock:^{
             printf("\r%s [%lu/%lu]", country.UTF8String, [countries indexOfObject:country]+1, [countries count]);
             fflush(stdout);
             
@@ -209,20 +212,14 @@ static void scanTopApps(NSString *appid, int genre, BOOL paid, int listsize) {
         }];
         
     }
-    
-    [myQueue waitUntilAllOperationsAreFinished];
 }
 
 static void scanReviews(NSString *appid) {
     printf("search reviews for appID:%s\n",appid.UTF8String);
     
-    NSOperationQueue *myQueue = [[NSOperationQueue alloc] init];
-    myQueue.name = @"Download Queue";
-    myQueue.MaxConcurrentOperationCount = 10;
-    
     for (NSString *country in countries) {
         
-        [myQueue addOperationWithBlock:^{
+        [operationQueue addOperationWithBlock:^{
             printf("\r%s [%lu/%lu]", country.UTF8String, [countries indexOfObject:country]+1, [countries count]);
             fflush(stdout);
             
@@ -258,8 +255,6 @@ static void scanReviews(NSString *appid) {
         }];
         
     }
-    
-    [myQueue waitUntilAllOperationsAreFinished];
 }
 
 static NSString* searchApp(NSString *query, NSString *country) {
