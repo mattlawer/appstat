@@ -51,13 +51,17 @@ static NSString *genreName(int genre) {
 
 static void print_usage(void) {
     printf("Usage : main -a <app_id> [-g <genre> -l <list_size> -r -p -f]\n");
+    printf("\t-s <search> : search an app\n");
     printf("\t-a <app_id> : the app ID to use\n");
     printf("\t-g <genre> : the genre code (ex: 6012)\n");
-    printf("\t-s <search> : search an app\n");
     printf("\t-r : list reviews\n");
     printf("\t-f : search top free\n");
     printf("\t-p : search top paid\n");
     printf("\t-l <list_size> : 1-200\n");
+    
+    
+    printf("\nexample:\n\tappstat -s Omnistat -g 6002\n");
+    printf("\tappstat -a 898245825 -r\n");
     exit(0);
 }
 
@@ -94,6 +98,10 @@ int main(int argc, char *const argv[]) {
                 break;
             case 'g':
                 genre = atoi(optarg);
+                if ((genre < 6000) || (genre >= 6024)) {
+                    fprintf(stderr, "invalid genre code '%d'\n",genre);
+                    print_genres();
+                }
                 break;
             case 's':{
                 NSString *searchID = searchApp([NSString stringWithFormat:@"%s",optarg], @"US");
