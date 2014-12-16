@@ -247,7 +247,7 @@ static void scanReviews(NSString *appid) {
                     for (int i = 0; i<5; i++)
                         stars = [stars stringByAppendingString:(i<rating_int) ? @"★" : @" "];
                     
-                    printf("\r%s - %s - %s \033[38;05;226m%s\033[m\n\033[34m%s\033[m - \033[31m%s\033[m\n\033[33m%s\033[m\n", bundle.UTF8String, version.UTF8String, country.UTF8String, stars.UTF8String, author.UTF8String, title.UTF8String, content.UTF8String);
+                    printf("\r%s - %s - %s \033[33m%s\033[m\n\033[34m%s\033[m - \033[32m%s\033[m\n%s\n", bundle.UTF8String, version.UTF8String, country.UTF8String, stars.UTF8String, author.UTF8String, title.UTF8String, content.UTF8String);
                 }
             }else {
                 NSLog(@"ERROR: %@",error.debugDescription);
