@@ -287,8 +287,10 @@ static NSString* searchApp(NSString *query, NSString *country) {
     
     if (!error && result) {
         NSArray *entries = result[@"results"];
-        printf("found %s by %s\n",[(NSString *)entries[0][@"trackCensoredName"] UTF8String], [(NSString *)entries[0][@"sellerName"] UTF8String]);
-        return [entries[0][@"trackId"] stringValue];
+        if ([entries count]) {
+            printf("found %s by %s\n",[(NSString *)entries[0][@"trackCensoredName"] UTF8String], [(NSString *)entries[0][@"sellerName"] UTF8String]);
+            return [entries[0][@"trackId"] stringValue];
+        }
     }else {
         NSLog(@"ERROR: %@",error.debugDescription);
     }
