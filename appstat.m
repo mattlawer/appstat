@@ -187,6 +187,7 @@ static id JSONObjectFromURL(NSURL *url, NSError *error) {
     NSURLRequest *request = [[NSURLRequest alloc] initWithURL:url];
     NSURLResponse* response;
     NSData* data = [NSURLConnection sendSynchronousRequest:request returningResponse:&response error:&error];
+    [request release];
     if (!data) {
         fprintf(stderr, "Unable to load data `%s'.\n", url.absoluteString.UTF8String);
         return nil;
