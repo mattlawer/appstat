@@ -62,6 +62,7 @@ static void print_usage(void) {
     printf("Usage : main -a <app_id> [-g <genre> -l <list_size> -r -p -f]\n");
     printf("\t-s <search> : search an app\n");
     printf("\t-a <app_id> : the app ID to use\n");
+    printf("\t-c <country_code> : the country code to use (ex: US)\n");
     printf("\t-g <genre> : the genre code (ex: 6012)\n");
     printf("\t-r : list reviews\n");
     printf("\t-f : search top free\n");
@@ -96,16 +97,21 @@ int main(int argc, char *const argv[]) {
         BOOL paid = YES; // paid
         int rflag = 0; // show reviews
 
+        NSString *country = nil;
         NSString *searchQuery = nil;
         
         int c;
         opterr = 0;
         
-        while ((c = getopt (argc, argv, ":a:g:s:rpfhl")) != -1)
+        while ((c = getopt (argc, argv, ":a:c:g:s:rpfhl")) != -1)
             switch (c)
         {
             case 'a':
                 appid = optarg;
+                break;
+            case 'c':
+                country = [NSString stringWithCString:optarg
+                                             encoding:NSUTF8StringEncoding];
                 break;
             case 'g':
                 genre = atoi(optarg);
@@ -134,9 +140,7 @@ int main(int argc, char *const argv[]) {
                 listsize = MIN(atoi(optarg),200);
                 break;
             case '?':
-                if (optopt == 'c')
-                    fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-                else if (isprint (optopt))
+                if (isprint (optopt))
                     fprintf (stderr, "Unknown option `-%c'.\n", optopt);
                 else
                     fprintf (stderr,
@@ -152,7 +156,7 @@ int main(int argc, char *const argv[]) {
                 fprintf(stderr, "missing app ID or search query\n");
                 print_usage();
             }
-            NSString *searchID = searchApp(searchQuery, @"US");
+            NSString *searchID = searchApp(searchQuery, country ?: @"US");
             if (searchID) {
                 appid = searchID.UTF8String;
             } else {
