@@ -4,8 +4,16 @@
 static NSArray *countries = nil;
 static NSOperationQueue *operationQueue = nil;
 
+static NSString* encodeURLString(NSString* URLString) {
+    return [URLString stringByAddingPercentEncodingWithAllowedCharacters:
+        [NSCharacterSet URLHostAllowedCharacterSet]];
+}
+
 static NSURL* searchURL(NSString *countryCode, NSString *search) {
-    return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/search?term=%@&country=%@&entity=software",search,countryCode]];
+    NSString* URLString = [NSString stringWithFormat:
+        @"https://itunes.apple.com/search?term=%@&country=%@&entity=software",
+            encodeURLString(search), countryCode];
+    return [NSURL URLWithString:URLString];
 }
 
 static NSURL* lookupURL(NSString *appID) {
@@ -54,6 +62,7 @@ static void print_usage(void) {
     printf("Usage : main -a <app_id> [-g <genre> -l <list_size> -r -p -f]\n");
     printf("\t-s <search> : search an app\n");
     printf("\t-a <app_id> : the app ID to use\n");
+    printf("\t-c <country_code> : the country code to use (ex: US)\n");
     printf("\t-g <genre> : the genre code (ex: 6012)\n");
     printf("\t-r : list reviews\n");
     printf("\t-f : search top free\n");
@@ -87,15 +96,22 @@ int main(int argc, char *const argv[]) {
         int listsize = 200; // list size
         BOOL paid = YES; // paid
         int rflag = 0; // show reviews
+
+        NSString *country = nil;
+        NSString *searchQuery = nil;
         
         int c;
         opterr = 0;
         
-        while ((c = getopt (argc, argv, ":a:g:s:rpfhl")) != -1)
+        while ((c = getopt (argc, argv, ":a:c:g:s:rpfhl")) != -1)
             switch (c)
         {
             case 'a':
                 appid = optarg;
+                break;
+            case 'c':
+                country = [NSString stringWithCString:optarg
+                                             encoding:NSUTF8StringEncoding];
                 break;
             case 'g':
                 genre = atoi(optarg);
@@ -104,12 +120,10 @@ int main(int argc, char *const argv[]) {
                     print_genres();
                 }
                 break;
-            case 's':{
-                NSString *searchID = searchApp([NSString stringWithFormat:@"%s",optarg], @"US");
-                if (searchID) {
-                    appid = searchID.UTF8String;
-                }
-                }break;
+            case 's':
+                searchQuery = [NSString stringWithCString:optarg
+                                                 encoding:NSUTF8StringEncoding];
+                break;
             case 'r':
                 rflag = 1;
                 break;
@@ -126,9 +140,7 @@ int main(int argc, char *const argv[]) {
                 listsize = MIN(atoi(optarg),200);
                 break;
             case '?':
-                if (optopt == 'c')
-                    fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-                else if (isprint (optopt))
+                if (isprint (optopt))
                     fprintf (stderr, "Unknown option `-%c'.\n", optopt);
                 else
                     fprintf (stderr,
@@ -140,8 +152,18 @@ int main(int argc, char *const argv[]) {
         }
         
         if (appid == NULL) {
-            fprintf(stderr, "missing app ID\n");
-            print_usage();
+            if (searchQuery == nil) {
+                fprintf(stderr, "missing app ID or search query\n");
+                print_usage();
+            }
+            NSString *searchID = searchApp(searchQuery, country ?: @"US");
+            if (searchID) {
+                appid = searchID.UTF8String;
+            } else {
+                printf("Could not find app named \"%s\"\n",
+                    [searchQuery cStringUsingEncoding:NSUTF8StringEncoding]);
+                exit(1);
+            }
         }
         
         countries = @[@"AL", @"DZ", @"AO", @"AI", @"AG", @"AR", @"AM", @"AU", @"AT", @"AZ", @"BS", @"BH", @"BB", @"BY", @"BE", @"BZ", @"BJ", @"BM", @"BT", @"BO", @"BW", @"BR", @"VG", @"BN", @"BG", @"BF", @"KH", @"CA", @"CV", @"KY", @"TD", @"CL", @"CN", @"CO", @"CG", @"CR", @"HR", @"CY", @"CZ", @"DK", @"DM", @"DO", @"EC", @"EG", @"SV", @"EE", @"FJ", @"FI", @"FR", @"GM", @"DE", @"GH", @"GR", @"GD", @"GT", @"GW", @"GY", @"HN", @"HK", @"HU", @"IS", @"IN", @"ID", @"IE", @"IL", @"IT", @"JM", @"JP", @"JO", @"KZ", @"KE", @"KR", @"KW", @"KG", @"LA", @"LV", @"LB", @"LR", @"LT", @"LU", @"MO", @"MK", @"MG", @"MW", @"MY", @"ML", @"MT", @"MR", @"MU", @"MX", @"FM", @"MD", @"MN", @"MS", @"MZ", @"NA", @"NP", @"NL", @"NZ", @"NI", @"NE", @"NG", @"NO", @"OM", @"PK", @"PW", @"PA", @"PG", @"PY", @"PE", @"PH", @"PL", @"PT", @"QA", @"RO", @"RU", @"ST", @"SA", @"SN", @"SC", @"SL", @"SG", @"SK", @"SI", @"SB", @"ZA", @"ES", @"LK", @"KN", @"LC", @"VC", @"SR", @"SZ", @"SE", @"CH", @"TW", @"TJ", @"TZ", @"TH", @"TT", @"TN", @"TR", @"TM", @"TC", @"UG", @"GB", @"UA", @"AE", @"UY", @"US", @"UZ", @"VE", @"VN", @"YE", @"ZW"];
@@ -165,6 +187,7 @@ static id JSONObjectFromURL(NSURL *url, NSError *error) {
     NSURLRequest *request = [[NSURLRequest alloc] initWithURL:url];
     NSURLResponse* response;
     NSData* data = [NSURLConnection sendSynchronousRequest:request returningResponse:&response error:&error];
+    [request release];
     if (!data) {
         fprintf(stderr, "Unable to load data `%s'.\n", url.absoluteString.UTF8String);
         return nil;
@@ -265,8 +288,10 @@ static NSString* searchApp(NSString *query, NSString *country) {
     
     if (!error && result) {
         NSArray *entries = result[@"results"];
-        printf("found %s by %s\n",[(NSString *)entries[0][@"trackCensoredName"] UTF8String], [(NSString *)entries[0][@"sellerName"] UTF8String]);
-        return [entries[0][@"trackId"] stringValue];
+        if ([entries count]) {
+            printf("found %s by %s\n",[(NSString *)entries[0][@"trackCensoredName"] UTF8String], [(NSString *)entries[0][@"sellerName"] UTF8String]);
+            return [entries[0][@"trackId"] stringValue];
+        }
     }else {
         NSLog(@"ERROR: %@",error.debugDescription);
     }
