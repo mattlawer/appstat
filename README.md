@@ -23,4 +23,4 @@ Get AppStore apps reviews, and rankings worldwide for every category.
 		appstat -s Omnistat -g 6002
 		appstat -a 898245825 -r
 
-![](http://i58.tinypic.com/k1ysm1.png "Example")
+![](http://oi57.tinypic.com/34pdkll.jpg "Example")
