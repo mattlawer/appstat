@@ -8,7 +8,7 @@ Get AppStore apps reviews, and rankings worldwide for every category.
 	make install
 
 ## Usage
-	Usage : main -a <app_id> [-g <genre> -l <list_size> -r -p -f]
+	Usage : appstat -a <app_id> [-g <genre> -l <list_size> -r -p -f]
 		-s <search> : search an app
 		-a <app_id> : the app ID to use
 		-c <country_code> : the country code to use for the search option (ex: US)

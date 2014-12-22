@@ -9,22 +9,19 @@ static NSString* encodeURLString(NSString* URLString) {
 }
 
 static NSURL* searchURL(NSString *countryCode, NSString *search) {
-    NSString* URLString = [NSString stringWithFormat:
-        @"https://itunes.apple.com/search?term=%@&country=%@&entity=software",
-            encodeURLString(search), countryCode];
-    return [NSURL URLWithString:URLString];
+    return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/search?term=%@&country=%@&entity=software", encodeURLString(search), countryCode]];
 }
 
 static NSURL* lookupURL(NSString *appID) {
-    return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/lookup?id=%@",appID]];
+    return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/lookup?id=%@", appID]];
 }
 
 static NSURL* reviewsURL(NSString *countryCode, NSString *appID) {
-    return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/customerreviews/id=%@/sortBy=mostRecent/json",countryCode,appID]];
+    return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/customerreviews/id=%@/sortBy=mostRecent/json", countryCode, appID]];
 }
 
 static NSURL* topURL(BOOL paid, NSString *countryCode, int genre, int limit) {
-    return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/top%@applications/limit=%d/%@json",countryCode, paid ? @"paid" : @"free", limit, (genre >= 6000) && (genre < 6024) ? [NSString stringWithFormat:@"genre=%d/",genre] : @""]];
+    return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/top%@applications/limit=%d/%@json", countryCode, paid ? @"paid" : @"free", limit, (genre >= 6000) && (genre < 6024) ? [NSString stringWithFormat:@"genre=%d/", genre] : @""]];
 }
 
 static NSString *genreName(int genre) {
@@ -58,7 +55,7 @@ static NSString *genreName(int genre) {
 }
 
 static void print_usage(void) {
-    printf("Usage : main -a <app_id> [-g <genre> -l <list_size> -r -p -f]\n");
+    printf("Usage : appstat -a <app_id> [-g <genre> -l <list_size> -r -p -f]\n");
     printf("\t-s <search> : search an app\n");
     printf("\t-a <app_id> : the app ID to use\n");
     printf("\t-c <country_code> : the country code to use (ex: US)\n");
@@ -71,13 +68,13 @@ static void print_usage(void) {
     
     printf("\nexample:\n\tappstat -s Omnistat -g 6002\n");
     printf("\tappstat -a 898245825 -r\n");
-    exit(0);
+	exit(0);
 }
 
 static void print_genres(void) {
     for (int g = 6000; g < 6024; g++)
         printf("%d : %s\n", g, genreName(g).UTF8String);
-    exit(0);
+	exit(0);
 }
 
 static id JSONObjectFromURL(NSURL *url, NSError *error);
@@ -120,8 +117,7 @@ int main(int argc, char *const argv[]) {
                 }
                 break;
             case 's':
-                searchQuery = [NSString stringWithCString:optarg
-                                                 encoding:NSUTF8StringEncoding];
+				searchQuery = [NSString stringWithCString:optarg encoding:NSUTF8StringEncoding];
                 break;
             case 'r':
                 rflag = 1;
@@ -142,9 +138,7 @@ int main(int argc, char *const argv[]) {
                 if (isprint (optopt))
                     fprintf (stderr, "Unknown option `-%c'.\n", optopt);
                 else
-                    fprintf (stderr,
-                             "Unknown option character `\\x%x'.\n",
-                             optopt);
+                    fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
                 return 1;
             default:
                 abort ();
@@ -159,8 +153,7 @@ int main(int argc, char *const argv[]) {
             if (searchID) {
                 appid = searchID.UTF8String;
             } else {
-                printf("Could not find app named \"%s\"\n",
-                    [searchQuery cStringUsingEncoding:NSUTF8StringEncoding]);
+                printf("Could not find app named \"%s\"\n", [searchQuery cStringUsingEncoding:NSUTF8StringEncoding]);
                 exit(1);
             }
         }
