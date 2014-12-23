@@ -221,7 +221,7 @@ static void scanTopApps(NSString *appid, int genre, BOOL paid, int listsize) {
                     NSString *entryid = entry[@"id"][@"attributes"][@"im:id"];
                     NSString *title = entry[@"im:name"][@"label"];
                     if ([entryid isEqualToString:appid]) {
-                        printf("\r%s top %ld in %s\n", title.UTF8String, [result[@"feed"][@"entry"] indexOfObject:entry]+1, countryName(country).UTF8String);
+                        printf("\r%s top \033[34m%ld\033[m in \033[32m%s\033[m\n", title.UTF8String, [result[@"feed"][@"entry"] indexOfObject:entry]+1, countryName(country).UTF8String);
                     }
                 }
                 
@@ -266,7 +266,7 @@ static void scanReviews(NSString *appid) {
                     for (int i = 0; i<5; i++)
                         stars = [stars stringByAppendingString:(i<rating_int) ? @"★" : @" "];
                     
-                    printf("\r%s - %s - %s \033[33m%s\033[m\n\033[34m%s\033[m - \033[32m%s\033[m\n%s\n", bundle.UTF8String, version.UTF8String, country.UTF8String, stars.UTF8String, author.UTF8String, title.UTF8String, content.UTF8String);
+                    printf("\r%s - %s - \033[33m%s\033[m - %s\n\033[34m%s\033[m - \033[32m%s\033[m\n%s\n", bundle.UTF8String, version.UTF8String, stars.UTF8String, countryName(country).UTF8String, author.UTF8String, title.UTF8String, content.UTF8String);
                 }
             }else {
                 NSLog(@"ERROR: %@",error.debugDescription);
