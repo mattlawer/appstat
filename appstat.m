@@ -54,6 +54,10 @@ static NSString *genreName(int genre) {
     return @"";
 }
 
+static NSString *countryName(NSString *countryCode) {
+	return [[NSLocale currentLocale] displayNameForKey:NSLocaleCountryCode value:countryCode];
+}
+
 static void print_usage(void) {
     printf("Usage : appstat -a <app_id> [-g <genre> -l <list_size> -r -p -f]\n");
     printf("\t-s <search> : search an app\n");
@@ -162,7 +166,7 @@ int main(int argc, char *const argv[]) {
         
         operationQueue = [[NSOperationQueue alloc] init];
         operationQueue.name = @"Operation Queue";
-        operationQueue.MaxConcurrentOperationCount = 10;
+        operationQueue.maxConcurrentOperationCount = 10;
         
         if (rflag) {
             scanReviews([NSString stringWithFormat:@"%s",appid]);
@@ -217,7 +221,7 @@ static void scanTopApps(NSString *appid, int genre, BOOL paid, int listsize) {
                     NSString *entryid = entry[@"id"][@"attributes"][@"im:id"];
                     NSString *title = entry[@"im:name"][@"label"];
                     if ([entryid isEqualToString:appid]) {
-                        printf("\r%s top %ld in %s\n", title.UTF8String, [result[@"feed"][@"entry"] indexOfObject:entry]+1, country.UTF8String);
+                        printf("\r%s top %ld in %s\n", title.UTF8String, [result[@"feed"][@"entry"] indexOfObject:entry]+1, countryName(country).UTF8String);
                     }
                 }
                 
