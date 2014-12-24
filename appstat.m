@@ -59,7 +59,7 @@ static NSString *countryName(NSString *countryCode) {
 }
 
 static void print_usage(void) {
-    printf("Usage : appstat -a <app_id> [-g <genre> -l <list_size> -r -p -f]\n");
+    printf("Usage : appstat [ -a <app_id> | -s <search> ] [-g <genre> -l <list_size> -r -p -f]\n");
     printf("\t-s <search> : search an app\n");
     printf("\t-a <app_id> : the app ID to use\n");
     printf("\t-c <country_code> : the country code to use (ex: US)\n");
