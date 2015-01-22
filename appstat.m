@@ -12,9 +12,10 @@ static NSURL* searchURL(NSString *countryCode, NSString *search) {
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/search?term=%@&country=%@&entity=software", encodeURLString(search), countryCode]];
 }
 
+/* not used yet
 static NSURL* lookupURL(NSString *appID) {
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/lookup?id=%@", appID]];
-}
+}*/
 
 static NSURL* reviewsURL(NSString *countryCode, NSString *appID) {
     return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/customerreviews/id=%@/sortBy=mostRecent/json", countryCode, appID]];
@@ -92,10 +93,10 @@ int main(int argc, char *const argv[]) {
     @autoreleasepool {
         
         const char *appid = NULL;
-        int genre = 6019; // genre
+        int genre = 6019;   // genre
         int listsize = 200; // list size
-        BOOL paid = YES; // paid
-        int rflag = 0; // show reviews
+        BOOL paid = YES;    // paid
+        int rflag = 0;      // show reviews
 
         NSString *country = nil;
         NSString *searchQuery = nil;
@@ -110,8 +111,7 @@ int main(int argc, char *const argv[]) {
                 appid = optarg;
                 break;
             case 'c':
-                country = [NSString stringWithCString:optarg
-                                             encoding:NSUTF8StringEncoding];
+                country = [NSString stringWithCString:optarg  encoding:NSUTF8StringEncoding];
                 break;
             case 'g':
                 genre = atoi(optarg);
@@ -121,7 +121,7 @@ int main(int argc, char *const argv[]) {
                 }
                 break;
             case 's':
-				searchQuery = [NSString stringWithCString:optarg encoding:NSUTF8StringEncoding];
+                searchQuery = [NSString stringWithCString:optarg encoding:NSUTF8StringEncoding];
                 break;
             case 'r':
                 rflag = 1;
@@ -139,13 +139,12 @@ int main(int argc, char *const argv[]) {
                 listsize = MIN(atoi(optarg),200);
                 break;
             case '?':
+             default:
                 if (isprint (optopt))
                     fprintf (stderr, "Unknown option `-%c'.\n", optopt);
                 else
                     fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
                 return 1;
-            default:
-                abort ();
         }
         
         if (appid == NULL) {
@@ -221,7 +220,7 @@ static void scanTopApps(NSString *appid, int genre, BOOL paid, int listsize) {
                     NSString *entryid = entry[@"id"][@"attributes"][@"im:id"];
                     NSString *title = entry[@"im:name"][@"label"];
                     if ([entryid isEqualToString:appid]) {
-                        printf("\r%s top \033[34m%ld\033[m in \033[32m%s\033[m\n", title.UTF8String, [result[@"feed"][@"entry"] indexOfObject:entry]+1, countryName(country).UTF8String);
+                        printf("\r\033[34m%ld\033[m in \033[32m%s\033[m - %s\n", [result[@"feed"][@"entry"] indexOfObject:entry]+1, countryName(country).UTF8String, title.UTF8String);
                     }
                 }
                 
@@ -234,7 +233,7 @@ static void scanTopApps(NSString *appid, int genre, BOOL paid, int listsize) {
 }
 
 static void scanReviews(NSString *appid) {
-    printf("search reviews for appID:%s\n",appid.UTF8String);
+    printf("search reviews for appID: %s\n",appid.UTF8String);
     
     for (NSString *country in countries) {
         
