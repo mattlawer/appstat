@@ -3,28 +3,6 @@
 static NSArray *countries = nil;
 static NSOperationQueue *operationQueue = nil;
 
-static NSString* encodeURLString(NSString* URLString) {
-    return [URLString stringByAddingPercentEncodingWithAllowedCharacters:
-        [NSCharacterSet URLHostAllowedCharacterSet]];
-}
-
-static NSURL* searchURL(NSString *countryCode, NSString *search) {
-    return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/search?term=%@&country=%@&entity=software", encodeURLString(search), countryCode]];
-}
-
-/* not used yet
-static NSURL* lookupURL(NSString *appID) {
-    return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/lookup?id=%@", appID]];
-}*/
-
-static NSURL* reviewsURL(NSString *countryCode, NSString *appID) {
-    return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/customerreviews/id=%@/sortBy=mostRecent/json", countryCode, appID]];
-}
-
-static NSURL* topURL(BOOL paid, NSString *countryCode, int genre, int limit) {
-    return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/top%@applications/limit=%d/%@json", countryCode, paid ? @"paid" : @"free", limit, (genre >= 6000) && (genre < 6024) ? [NSString stringWithFormat:@"genre=%d/", genre] : @""]];
-}
-
 static NSString *genreName(int genre) {
     switch (genre) {
         case 6000: return @"business";
@@ -51,8 +29,50 @@ static NSString *genreName(int genre) {
         case 6021: return @"newsstand";
         case 6022: return @"catalogs";
         case 6023: return @"food & drink";
+            
+        case 7001: return @"action games";
+        case 7002: return @"adventure games";
+        case 7003: return @"arcade games";
+        case 7004: return @"board games";
+        case 7005: return @"card games";
+        case 7006: return @"casino games";
+        case 7007: return @"dice games";
+        case 7008: return @"educational games";
+        case 7009: return @"family games";
+        case 7010: return @"kids games";
+        case 7011: return @"music games";
+        case 7012: return @"puzzle games";
+        case 7013: return @"racing games";
+        case 7014: return @"role playing games";
+        case 7015: return @"simulation games";
+        case 7016: return @"sports games";
+        case 7017: return @"strategy games";
+        case 7018: return @"trivia games";
+        case 7019: return @"word games";
     }
-    return @"";
+    return nil;
+}
+
+static NSString* encodeURLString(NSString* URLString) {
+    return [URLString stringByAddingPercentEncodingWithAllowedCharacters:
+        [NSCharacterSet URLHostAllowedCharacterSet]];
+}
+
+static NSURL* searchURL(NSString *countryCode, NSString *search) {
+    return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/search?term=%@&country=%@&entity=software", encodeURLString(search), countryCode]];
+}
+
+/* not used yet
+static NSURL* lookupURL(NSString *appID) {
+    return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/lookup?id=%@", appID]];
+}*/
+
+static NSURL* reviewsURL(NSString *countryCode, NSString *appID) {
+    return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/customerreviews/id=%@/sortBy=mostRecent/json", countryCode, appID]];
+}
+
+static NSURL* topURL(BOOL paid, NSString *countryCode, int genre, int limit) {
+    return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/top%@applications/limit=%d/%@json", countryCode, paid ? @"paid" : @"free", limit, genreName(genre) != nil ? [NSString stringWithFormat:@"genre=%d/", genre] : @""]];
 }
 
 static NSString *countryName(NSString *countryCode) {
@@ -77,8 +97,14 @@ static void print_usage(void) {
 }
 
 static void print_genres(void) {
-    for (int g = 6000; g < 6024; g++)
+    for (int g = 6000; g < 6024; g++) {
         printf("%d : %s\n", g, genreName(g).UTF8String);
+        if (g == 6014) {
+            for (int h = 7001; h < 7020; h++) {
+                printf("\t%d : %s\n", h, genreName(h).UTF8String);
+            }
+        }
+    }
 	exit(0);
 }
 
@@ -115,7 +141,7 @@ int main(int argc, char *const argv[]) {
                 break;
             case 'g':
                 genre = atoi(optarg);
-                if ((genre < 6000) || (genre >= 6024)) {
+                if (genreName(genre) == nil) {
                     fprintf(stderr, "invalid genre code '%d'\n",genre);
                     print_genres();
                 }
@@ -181,8 +207,11 @@ int main(int argc, char *const argv[]) {
 static id JSONObjectFromURL(NSURL *url, NSError *error) {
     NSURLRequest *request = [[NSURLRequest alloc] initWithURL:url];
     NSURLResponse* response;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     NSData* data = [NSURLConnection sendSynchronousRequest:request returningResponse:&response error:&error];
     [request release];
+#pragma GCC diagnostic pop
     if (!data) {
         fprintf(stderr, "Unable to load data `%s'.\n", url.absoluteString.UTF8String);
         return nil;
@@ -201,7 +230,8 @@ static NSArray* getEntries(id jsonObject) {
 }
 
 static void scanTopApps(NSString *appid, int genre, BOOL paid, int listsize) {
-    printf("search for appID:%s\nin %d top %s%s\n", appid.UTF8String, listsize, paid ? "paid" : "free", genre == 0 ? "" : [NSString stringWithFormat:@" %s",genreName(genre).UTF8String].UTF8String);
+    NSString *genreStr = genreName(genre);
+    printf("search for appID:%s\nin %d top %s%s\n", appid.UTF8String, listsize, paid ? "paid" : "free", genreStr != nil ? [NSString stringWithFormat:@" %s",genreStr.UTF8String].UTF8String : "");
     
     for (NSString *country in countries) {
         
