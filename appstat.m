@@ -137,7 +137,7 @@ static void print_genres(void) {
             }
         }else if (g == 6021) {
             for (int h = 13001; h < 13031; h++) {
-                if (h != 13015) {
+                if (h != 13016 && h != 13022) {
                     printf("\t%d : %s\n", h, genreName(h).UTF8String);
                 }
             }
