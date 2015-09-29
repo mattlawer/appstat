@@ -29,7 +29,8 @@ static NSString *genreName(int genre) {
         case 6021: return @"newsstand";
         case 6022: return @"catalogs";
         case 6023: return @"food & drink";
-            
+        
+        // Games
         case 7001: return @"action games";
         case 7002: return @"adventure games";
         case 7003: return @"arcade games";
@@ -49,6 +50,37 @@ static NSString *genreName(int genre) {
         case 7017: return @"strategy games";
         case 7018: return @"trivia games";
         case 7019: return @"word games";
+            
+        // Newsstand
+        case 13001: return @"newsstand - news & politics";
+        case 13002: return @"newsstand - fashion & style";
+        case 13003: return @"newsstand - home & garden";
+        case 13004: return @"newsstand - outdoors & nature";
+        case 13005: return @"newsstand - sports & leisure";
+        case 13006: return @"newsstand - automotive";
+        case 13007: return @"newsstand - arts & photography";
+        case 13008: return @"newsstand - brides & weddings";
+        case 13009: return @"newsstand - business & investing";
+        case 13010: return @"newsstand - children's magazines";
+        case 13011: return @"newsstand - computers & internet";
+        case 13012: return @"newsstand - cooking, food & drinks";
+        case 13013: return @"newsstand - crafts & hobbies";
+        case 13014: return @"newsstand - electronics & audio";
+        case 13015: return @"newsstand - entertainment";
+        case 13017: return @"newsstand - health, mind & body";
+        case 13018: return @"newsstand - history";
+        case 13019: return @"newsstand - literary magazines & journals";
+        case 13020: return @"newsstand - men's interest";
+        case 13021: return @"newsstand - movies & music";
+        case 13023: return @"newsstand - parenting & family";
+        case 13024: return @"newsstand - pets";
+        case 13025: return @"newsstand - professional & trade";
+        case 13026: return @"newsstand - regional news";
+        case 13027: return @"newsstand - science";
+        case 13028: return @"newsstand - teens";
+        case 13029: return @"newsstand - travel & regional";
+        case 13030: return @"newsstand - women’s interest";
+
     }
     return nil;
 }
@@ -102,6 +134,12 @@ static void print_genres(void) {
         if (g == 6014) {
             for (int h = 7001; h < 7020; h++) {
                 printf("\t%d : %s\n", h, genreName(h).UTF8String);
+            }
+        }else if (g == 6021) {
+            for (int h = 13001; h < 13031; h++) {
+                if (h != 13015) {
+                    printf("\t%d : %s\n", h, genreName(h).UTF8String);
+                }
             }
         }
     }
