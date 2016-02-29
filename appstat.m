@@ -112,18 +112,18 @@ static NSString *countryName(NSString *countryCode) {
 }
 
 static void print_usage(void) {
-    printf("Usage : appstat [ -a <app_id> | -s <search> ] [-g <genre> -l <list_size> -r -p -f]\n");
+    printf("Usage : appstat -a <app_id> | -s <search> [-r] [-p -f -g <genre> -l <list_size>]\n");
     printf("\t-s <search> : search an app\n");
     printf("\t-a <app_id> : the app ID to use\n");
     printf("\t-c <country_code> : the country code to use (ex: US)\n");
-    printf("\t-g <genre> : the genre code (ex: 6012)\n");
+    printf("\t-g <genre> : the genre code (ex: 6012, -p or -f required)\n\t\t     use -g ? to list all genre codes\n");
     printf("\t-r : list reviews\n");
     printf("\t-f : search top free\n");
     printf("\t-p : search top paid\n");
-    printf("\t-l <list_size> : 1-200\n");
+    printf("\t-l <list_size> : 1-200 (-p or -f required)\n");
     
     
-    printf("\nexample:\n\tappstat -s Omnistat -g 6002\n");
+    printf("\nexample:\n\tappstat -s Omnistat -p -g 6002,6007\n");
     printf("\tappstat -a 898245825 -r\n");
 	exit(0);
 }
@@ -156,34 +156,43 @@ int main(int argc, char *const argv[]) {
     
     @autoreleasepool {
         
-        const char *appid = NULL;
-        int genre = 6019;   // genre
         int listsize = 200; // list size
-        BOOL paid = YES;    // paid
-        int rflag = 0;      // show reviews
-
+        int rflag,pflag,fflag= 0;      // show reviews
+        
+        NSString *appid = nil;
         NSString *country = nil;
         NSString *searchQuery = nil;
+        NSMutableArray *categories = [[NSMutableArray alloc] init];
+        [categories addObject:@(6019)]; // all by default
         
         int c;
         opterr = 0;
         
-        while ((c = getopt (argc, argv, ":a:c:g:s:rpfhl")) != -1)
+        while ((c = getopt (argc, argv, ":a:c:g:s:l:rpfh")) != -1)
             switch (c)
         {
             case 'a':
-                appid = optarg;
+                appid = [NSString stringWithCString:optarg  encoding:NSUTF8StringEncoding];
                 break;
             case 'c':
                 country = [NSString stringWithCString:optarg  encoding:NSUTF8StringEncoding];
                 break;
-            case 'g':
-                genre = atoi(optarg);
-                if (genreName(genre) == nil) {
-                    fprintf(stderr, "invalid genre code '%d'\n",genre);
+            case 'g': {
+                char *genrestr = strdup(optarg);
+                char *token;
+                [categories removeAllObjects];
+                while ((token = strsep(&genrestr, ","))) {
+                    int genre = atoi(token);
+                    if (genreName(genre)) {
+                        [categories addObject:[NSNumber numberWithInt:genre]];
+                    }
+                }
+                free(genrestr);
+                if (categories.count == 0) {
+                    fprintf(stderr, "invalid genre code '%s'\n",optarg);
                     print_genres();
                 }
-                break;
+            }break;
             case 's':
                 searchQuery = [NSString stringWithCString:optarg encoding:NSUTF8StringEncoding];
                 break;
@@ -191,10 +200,10 @@ int main(int argc, char *const argv[]) {
                 rflag = 1;
                 break;
             case 'p':
-                paid = YES;
+                pflag = 1;
                 break;
             case 'f':
-                paid = NO;
+                fflag = 1;
                 break;
             case 'h':
                 print_usage();
@@ -211,14 +220,14 @@ int main(int argc, char *const argv[]) {
                 return 1;
         }
         
-        if (appid == NULL) {
-            if (searchQuery == nil) {
+        if (!appid) {
+            if (!searchQuery) {
                 fprintf(stderr, "missing app ID or search query\n");
                 print_usage();
             }
             NSString *searchID = searchApp(searchQuery, country ?: @"US");
             if (searchID) {
-                appid = searchID.UTF8String;
+                appid = searchID;
             } else {
                 printf("Could not find app named \"%s\"\n", [searchQuery cStringUsingEncoding:NSUTF8StringEncoding]);
                 exit(1);
@@ -231,13 +240,29 @@ int main(int argc, char *const argv[]) {
         operationQueue.name = @"Operation Queue";
         operationQueue.maxConcurrentOperationCount = 10;
         
-        if (rflag) {
-            scanReviews([NSString stringWithFormat:@"%s",appid]);
-        }else {
-            scanTopApps([NSString stringWithFormat:@"%s",appid], genre, paid, listsize);
+        if (rflag == 0 && pflag == 0 && fflag == 0) {
+            fprintf(stderr, "use -f or -p or -r to search in top free/paid or list reviews\n");
         }
         
-        [operationQueue waitUntilAllOperationsAreFinished];
+        if (rflag) {
+            scanReviews(appid);
+            [operationQueue waitUntilAllOperationsAreFinished];
+            printf("\n");
+        }
+        if (pflag) {
+            for (NSNumber *genre in categories) {
+                scanTopApps(appid, genre.intValue, YES, listsize);
+                printf("\n");
+            }
+            [operationQueue waitUntilAllOperationsAreFinished];
+        }
+        if (fflag) {
+            for (NSNumber *genre in categories) {
+                scanTopApps(appid, genre.intValue, YES, listsize);
+                printf("\n");
+            }
+            [operationQueue waitUntilAllOperationsAreFinished];
+        }
     }
     return 0;
 }
@@ -248,7 +273,6 @@ static id JSONObjectFromURL(NSURL *url, NSError *error) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     NSData* data = [NSURLConnection sendSynchronousRequest:request returningResponse:&response error:&error];
-    [request release];
 #pragma GCC diagnostic pop
     if (!data) {
         fprintf(stderr, "Unable to load data `%s'.\n", url.absoluteString.UTF8String);
@@ -269,7 +293,7 @@ static NSArray* getEntries(id jsonObject) {
 
 static void scanTopApps(NSString *appid, int genre, BOOL paid, int listsize) {
     NSString *genreStr = genreName(genre);
-    printf("search for appID:%s\nin %d top %s%s\n", appid.UTF8String, listsize, paid ? "paid" : "free", genreStr != nil ? [NSString stringWithFormat:@" %s",genreStr.UTF8String].UTF8String : "");
+    printf("search for appID: \033[34m%s\033[m\nin %d top \033[32m%s%s\033[m\n", appid.UTF8String, listsize, paid ? "paid" : "free", genreStr != nil ? [NSString stringWithFormat:@" %s",genreStr.UTF8String].UTF8String : "");
     
     for (NSString *country in countries) {
         
@@ -296,7 +320,6 @@ static void scanTopApps(NSString *appid, int genre, BOOL paid, int listsize) {
                 NSLog(@"ERROR: %@",error.debugDescription);
             }
         }];
-        
     }
 }
 
@@ -351,9 +374,22 @@ static NSString* searchApp(NSString *query, NSString *country) {
     
     if (!error && result) {
         NSArray *entries = result[@"results"];
-        if ([entries count]) {
-            printf("found %s by %s\n",[(NSString *)entries[0][@"trackCensoredName"] UTF8String], [(NSString *)entries[0][@"sellerName"] UTF8String]);
+        if ([entries count] == 1) {
+            printf("(\033[34m%s\033[m) \033[32m%s\033[m by \033[34m%s\033[m\n", [[(NSNumber *)entries[0][@"trackId"] stringValue] UTF8String], [(NSString *)entries[0][@"trackCensoredName"] UTF8String], [(NSString *)entries[0][@"sellerName"] UTF8String]);
             return [entries[0][@"trackId"] stringValue];
+        }else if ([entries count] > 0) {
+            int count = 1;
+            for (NSDictionary *entry in entries) {
+                printf("%d)\t(\033[34m%s\033[m) \033[32m%s\033[m by \033[34m%s\033[m\n", count++, [[(NSNumber *)entry[@"trackId"] stringValue] UTF8String], [(NSString *)entry[@"trackCensoredName"] UTF8String], [(NSString *)entry[@"sellerName"] UTF8String]);
+            }
+            do {
+                int index = 1;
+                printf ("Select the app index:");
+                scanf("%d",&index);
+                if (index > 0 && [entries count] >= index) {
+                    return [entries[index-1][@"trackId"] stringValue];
+                }
+            } while (1);
         }
     }else {
         NSLog(@"ERROR: %@",error.debugDescription);
