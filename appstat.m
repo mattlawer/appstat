@@ -103,8 +103,8 @@ static NSURL* reviewsURL(NSString *countryCode, NSString *appID) {
     return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/customerreviews/id=%@/sortBy=mostRecent/json", countryCode, appID]];
 }
 
-static NSURL* topURL(BOOL paid, NSString *countryCode, int genre, int limit) {
-    return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/top%@applications/limit=%d/%@json", countryCode, paid ? @"paid" : @"free", limit, genreName(genre) != nil ? [NSString stringWithFormat:@"genre=%d/", genre] : @""]];
+static NSURL* topURL(int cType, NSString *countryCode, int genre, int limit) {
+    return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/top%@applications/limit=%d/%@json", countryCode, cType == 2 ? @"grossing" : cType == 1 ? @"paid" : @"free", limit, genreName(genre) != nil ? [NSString stringWithFormat:@"genre=%d/", genre] : @""]];
 }
 
 static NSString *countryName(NSString *countryCode) {
@@ -112,13 +112,15 @@ static NSString *countryName(NSString *countryCode) {
 }
 
 static void print_usage(void) {
-    printf("Usage : appstat -a <app_id> | -s <search> [-r] [-p -f -g <genre> -l <list_size>]\n");
+    printf("Usage : appstat -a <app_id> | -b <bundle_id> | -s <search> [-r] [-p -m -f -g <genre> -l <list_size>]\n");
     printf("\t-s <search> : search an app\n");
     printf("\t-a <app_id> : the app ID to use\n");
+    printf("\t-b <bundle_id> : the start of the bundle ID to use\n");
     printf("\t-c <country_code> : the country code to use (ex: US)\n");
     printf("\t-g <genre> : the genre code (ex: 6012, -p or -f required)\n\t\t     use -g ? to list all genre codes\n");
     printf("\t-r : list reviews\n");
     printf("\t-f : search top free\n");
+    printf("\t-m : search top grossing\n");
     printf("\t-p : search top paid\n");
     printf("\t-l <list_size> : 1-200 (-p or -f required)\n");
     
@@ -148,7 +150,7 @@ static void print_genres(void) {
 
 static id JSONObjectFromURL(NSURL *url, NSError *error);
 static NSArray* getEntries(id jsonObject);
-static void scanTopApps(NSString *appid, int genre, BOOL paid, int listsize);
+static void scanTopApps(NSString *appid, NSString *bundleid, int genre, int cType, int listsize);
 static void scanReviews(NSString *appid);
 static NSString* searchApp(NSString *query, NSString *country);
 
@@ -157,9 +159,10 @@ int main(int argc, char *const argv[]) {
     @autoreleasepool {
         
         int listsize = 200; // list size
-        int rflag,pflag,fflag= 0;      // show reviews
+        int rflag,pflag,fflag=0,mflag= 0;      // show reviews
         
         NSString *appid = nil;
+        NSString *bundleid = nil;
         NSString *country = nil;
         NSString *searchQuery = nil;
         NSMutableArray *categories = [[NSMutableArray alloc] init];
@@ -168,11 +171,14 @@ int main(int argc, char *const argv[]) {
         int c;
         opterr = 0;
         
-        while ((c = getopt (argc, argv, ":a:c:g:s:l:rpfh")) != -1)
+        while ((c = getopt (argc, argv, ":a:b:c:g:s:l:rpfhm")) != -1)
             switch (c)
         {
             case 'a':
                 appid = [NSString stringWithCString:optarg  encoding:NSUTF8StringEncoding];
+                break;
+            case 'b':
+                bundleid = [NSString stringWithCString:optarg  encoding:NSUTF8StringEncoding];
                 break;
             case 'c':
                 country = [NSString stringWithCString:optarg  encoding:NSUTF8StringEncoding];
@@ -199,6 +205,9 @@ int main(int argc, char *const argv[]) {
             case 'r':
                 rflag = 1;
                 break;
+            case 'm':
+              mflag = 1;
+                break;
             case 'p':
                 pflag = 1;
                 break;
@@ -220,7 +229,7 @@ int main(int argc, char *const argv[]) {
                 return 1;
         }
         
-        if (!appid) {
+        if (!appid && !bundleid) {
             if (!searchQuery) {
                 fprintf(stderr, "missing app ID or search query\n");
                 print_usage();
@@ -240,8 +249,8 @@ int main(int argc, char *const argv[]) {
         operationQueue.name = @"Operation Queue";
         operationQueue.maxConcurrentOperationCount = 10;
         
-        if (rflag == 0 && pflag == 0 && fflag == 0) {
-            fprintf(stderr, "use -f or -p or -r to search in top free/paid or list reviews\n");
+        if (rflag == 0 && pflag == 0 && fflag == 0  && mflag == 0) {
+            fprintf(stderr, "use -f or -p or -m or -r to search in top free/paid/grossing or list reviews\n");
         }
         
         if (rflag) {
@@ -251,14 +260,21 @@ int main(int argc, char *const argv[]) {
         }
         if (pflag) {
             for (NSNumber *genre in categories) {
-                scanTopApps(appid, genre.intValue, YES, listsize);
+                scanTopApps(appid, bundleid, genre.intValue, 1, listsize);
+                printf("\n");
+            }
+            [operationQueue waitUntilAllOperationsAreFinished];
+        }
+        if (mflag) {
+            for (NSNumber *genre in categories) {
+                scanTopApps(appid, bundleid, genre.intValue, 2, listsize);
                 printf("\n");
             }
             [operationQueue waitUntilAllOperationsAreFinished];
         }
         if (fflag) {
             for (NSNumber *genre in categories) {
-                scanTopApps(appid, genre.intValue, YES, listsize);
+                scanTopApps(appid, bundleid, genre.intValue, 0, listsize);
                 printf("\n");
             }
             [operationQueue waitUntilAllOperationsAreFinished];
@@ -291,9 +307,9 @@ static NSArray* getEntries(id jsonObject) {
     return nil;
 }
 
-static void scanTopApps(NSString *appid, int genre, BOOL paid, int listsize) {
+static void scanTopApps(NSString *appid, NSString *bundleid, int genre, int cType, int listsize) {
     NSString *genreStr = genreName(genre);
-    printf("search for appID: \033[34m%s\033[m\nin %d top \033[32m%s%s\033[m\n", appid.UTF8String, listsize, paid ? "paid" : "free", genreStr != nil ? [NSString stringWithFormat:@" %s",genreStr.UTF8String].UTF8String : "");
+    printf("search for appID: \033[34m%s\033[m\nin %d top \033[32m%s%s\033[m\n", appid.UTF8String, listsize, cType == 2 ? "grossing" : cType == 1 ? "paid" : "free", genreStr != nil ? [NSString stringWithFormat:@" %s",genreStr.UTF8String].UTF8String : "");
     
     for (NSString *country in countries) {
         
@@ -301,7 +317,7 @@ static void scanTopApps(NSString *appid, int genre, BOOL paid, int listsize) {
             printf("\r%s [%lu/%lu]", country.UTF8String, [countries indexOfObject:country]+1, [countries count]);
             fflush(stdout);
             
-            NSURL *url = topURL(paid,country,genre,listsize);
+            NSURL *url = topURL(cType,country,genre,listsize);
             NSError* error = nil;
             
             NSDictionary *result = JSONObjectFromURL(url, error);
@@ -310,8 +326,9 @@ static void scanTopApps(NSString *appid, int genre, BOOL paid, int listsize) {
                 NSArray *entries = getEntries(result);
                 for (NSDictionary *entry in entries) {
                     NSString *entryid = entry[@"id"][@"attributes"][@"im:id"];
+                    NSString *bundle = entry[@"id"][@"attributes"][@"im:bundleId"];
                     NSString *title = entry[@"im:name"][@"label"];
-                    if ([entryid isEqualToString:appid]) {
+                    if ([entryid isEqualToString:appid] || [bundle hasPrefix:bundleid]) {
                         printf("\r\033[34m%ld\033[m in \033[32m%s\033[m - %s\n", [result[@"feed"][@"entry"] indexOfObject:entry]+1, countryName(country).UTF8String, title.UTF8String);
                     }
                 }
