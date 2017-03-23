@@ -261,23 +261,23 @@ int main(int argc, char *const argv[]) {
         if (pflag) {
             for (NSNumber *genre in categories) {
                 scanTopApps(appid, bundleid, genre.intValue, 1, listsize);
+                [operationQueue waitUntilAllOperationsAreFinished];
                 printf("\n");
             }
-            [operationQueue waitUntilAllOperationsAreFinished];
         }
         if (mflag) {
             for (NSNumber *genre in categories) {
                 scanTopApps(appid, bundleid, genre.intValue, 2, listsize);
+                [operationQueue waitUntilAllOperationsAreFinished];
                 printf("\n");
             }
-            [operationQueue waitUntilAllOperationsAreFinished];
         }
         if (fflag) {
             for (NSNumber *genre in categories) {
                 scanTopApps(appid, bundleid, genre.intValue, 0, listsize);
+                [operationQueue waitUntilAllOperationsAreFinished];
                 printf("\n");
             }
-            [operationQueue waitUntilAllOperationsAreFinished];
         }
     }
     return 0;
@@ -309,7 +309,15 @@ static NSArray* getEntries(id jsonObject) {
 
 static void scanTopApps(NSString *appid, NSString *bundleid, int genre, int cType, int listsize) {
     NSString *genreStr = genreName(genre);
-    printf("search for appID: \033[34m%s\033[m\nin %d top \033[32m%s%s\033[m\n", appid.UTF8String, listsize, cType == 2 ? "grossing" : cType == 1 ? "paid" : "free", genreStr != nil ? [NSString stringWithFormat:@" %s",genreStr.UTF8String].UTF8String : "");
+
+    if (appid) {
+        printf("search for appID: \033[34m%s\033[m\nin %d top \033[32m%s%s\033[m\n", appid.UTF8String, listsize, cType == 2 ? "grossing" : cType == 1 ? "paid" : "free", genreStr != nil ? [NSString stringWithFormat:@" %s",genreStr.UTF8String].UTF8String : "");
+    } else if (bundleid) {
+        printf("search for bundleID: \033[34m%s\033[m\nin %d top \033[32m%s%s\033[m\n", bundleid.UTF8String, listsize, cType == 2 ? "grossing" : cType == 1 ? "paid" : "free", genreStr != nil ? [NSString stringWithFormat:@" %s",genreStr.UTF8String].UTF8String : "");
+    } else {
+        return;
+    }
+
     
     for (NSString *country in countries) {
         
@@ -328,7 +336,7 @@ static void scanTopApps(NSString *appid, NSString *bundleid, int genre, int cTyp
                     NSString *entryid = entry[@"id"][@"attributes"][@"im:id"];
                     NSString *bundle = entry[@"id"][@"attributes"][@"im:bundleId"];
                     NSString *title = entry[@"im:name"][@"label"];
-                    if ([entryid isEqualToString:appid] || [bundle hasPrefix:bundleid]) {
+                    if ((appid && [entryid isEqualToString:appid]) || (bundleid && [bundle hasPrefix:bundleid])) {
                         printf("\r\033[34m%ld\033[m in \033[32m%s\033[m - %s\n", [result[@"feed"][@"entry"] indexOfObject:entry]+1, countryName(country).UTF8String, title.UTF8String);
                     }
                 }
