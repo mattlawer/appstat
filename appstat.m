@@ -318,17 +318,18 @@ static void scanTopApps(NSString *appid, NSString *bundleid, int genre, int cTyp
         return;
     }
 
-    
+    __block int count=0;
     for (NSString *country in countries) {
         
         [operationQueue addOperationWithBlock:^{
-            printf("\r%s [%lu/%lu]", country.UTF8String, [countries indexOfObject:country]+1, [countries count]);
-            fflush(stdout);
             
             NSURL *url = topURL(cType,country,genre,listsize);
             NSError* error = nil;
             
             NSDictionary *result = JSONObjectFromURL(url, error);
+            
+            printf("\r%s [%d/%lu]", country.UTF8String, ++count, [countries count]);
+            fflush(stdout);
             
             if (!error && result) {
                 NSArray *entries = getEntries(result);
@@ -351,16 +352,18 @@ static void scanTopApps(NSString *appid, NSString *bundleid, int genre, int cTyp
 static void scanReviews(NSString *appid) {
     printf("search reviews for appID: %s\n",appid.UTF8String);
     
+    __block int count=0;
     for (NSString *country in countries) {
         
         [operationQueue addOperationWithBlock:^{
-            printf("\r%s [%lu/%lu]", country.UTF8String, [countries indexOfObject:country]+1, [countries count]);
-            fflush(stdout);
             
             NSURL *url = reviewsURL(country, appid);
             NSError* error = nil;
             
             NSDictionary *result = JSONObjectFromURL(url, error);
+            
+            printf("\r%s [%d/%lu]", country.UTF8String, ++count, [countries count]);
+            fflush(stdout);
             
             if (!error && result) {
                 NSArray *entries = getEntries(result);
