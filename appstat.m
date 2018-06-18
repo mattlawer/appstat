@@ -107,8 +107,18 @@ static NSURL* topURL(int cType, NSString *countryCode, int genre, int limit) {
     return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/top%@applications/limit=%d/%@json", countryCode, cType == 2 ? @"grossing" : cType == 1 ? @"paid" : @"free", limit, genreName(genre) != nil ? [NSString stringWithFormat:@"genre=%d/", genre] : @""]];
 }
 
+static NSString *emojiFromCountry(NSString *countryCode) {
+    if (countryCode.length != 2) { return @""; }
+    int base = 127397;
+    wchar_t bytes[2] = {
+        base +[countryCode characterAtIndex:0],
+        base +[countryCode characterAtIndex:1]
+    };
+    return [[NSString alloc] initWithBytes:bytes length:countryCode.length *sizeof(wchar_t) encoding:NSUTF32LittleEndianStringEncoding];
+}
+
 static NSString *countryName(NSString *countryCode) {
-	return [[NSLocale currentLocale] displayNameForKey:NSLocaleCountryCode value:countryCode];
+    return [NSString stringWithFormat:@"%@  %@",emojiFromCountry(countryCode), [[NSLocale currentLocale] displayNameForKey:NSLocaleCountryCode value:countryCode]];
 }
 
 static void print_usage(void) {
