@@ -104,7 +104,7 @@ static NSURL* reviewsURL(NSString *countryCode, NSString *appID) {
 }
 
 static NSURL* topURL(int cType, NSString *countryCode, int genre, int limit) {
-    return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/top%@applications/limit=%d/%@json", countryCode, cType == 2 ? @"grossing" : cType == 1 ? @"paid" : @"free", limit, genreName(genre) != nil ? [NSString stringWithFormat:@"genre=%d/", genre] : @""]];
+    return [NSURL URLWithString:[NSString stringWithFormat:@"http://itunes.apple.com/%@/rss/top%@applications/limit=%d/%@json", countryCode, cType == 2 ? @"grossing" : cType == 1 ? @"paid" : @"free", limit, genreName(genre) != nil ? [NSString stringWithFormat:@"genre=%d/", genre] : @"genre=6002"]];
 }
 
 static NSString *emojiFromCountry(NSString *countryCode) {
@@ -294,18 +294,36 @@ int main(int argc, char *const argv[]) {
 }
 
 static id JSONObjectFromURL(NSURL *url, NSError *error) {
-    NSURLRequest *request = [[NSURLRequest alloc] initWithURL:url];
-    NSURLResponse* response;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    NSData* data = [NSURLConnection sendSynchronousRequest:request returningResponse:&response error:&error];
-#pragma GCC diagnostic pop
-    if (!data) {
-        fprintf(stderr, "Unable to load data `%s'.\n", url.absoluteString.UTF8String);
-        return nil;
+    NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:url];
+    [request addValue:@"application/json" forHTTPHeaderField:@"Accept"];
+
+    __block NSData *blockData = nil;
+    @try {
+        __block NSError *blockError = nil;
+
+        dispatch_group_t group = dispatch_group_create();
+        dispatch_group_enter(group);
+
+        NSURLSession *session = [NSURLSession sharedSession];
+        [[session dataTaskWithRequest:request completionHandler:^(NSData * _Nullable subData, NSURLResponse * _Nullable subResponse, NSError * _Nullable subError) {
+
+            blockData = subData;
+            blockError = subError;
+            dispatch_group_leave(group);
+        }] resume];
+
+        dispatch_group_wait(group,  DISPATCH_TIME_FOREVER);
+        error = blockError;
+
+    } @catch (NSException *exception) {
+        NSLog(@"Error %@", exception.description);
+    } @finally {
+        if (!error && blockData) {
+            return [NSJSONSerialization JSONObjectWithData:blockData options:0 error:&error];
+        }
+        fprintf(stderr, "Unable to load data `%s' (%s).\n", url.absoluteString.UTF8String, error.debugDescription.UTF8String);
+        return blockData;
     }
-    
-    return [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
 }
 
 static NSArray* getEntries(id jsonObject) {
@@ -353,7 +371,11 @@ static void scanTopApps(NSString *appid, NSString *bundleid, int genre, int cTyp
                 }
                 
             }else {
-                NSLog(@"ERROR: %@",error.debugDescription);
+                if (error) {
+                    printf("\r%s [%d/%lu] \033[31mfailed with %s\033[m\n", country.UTF8String, ++count, [countries count], error.debugDescription.UTF8String);
+                } else {
+                    printf("\r%s [%d/%lu] \033[31mfailed\033[m\n", country.UTF8String, ++count, [countries count]);
+                }
             }
         }];
     }
