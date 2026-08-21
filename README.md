@@ -8,22 +8,20 @@ Get AppStore apps reviews, and rankings worldwide for every category.
 	make install
 
 ## Usage
-	Usage : appstat -a <app_id> [-g <genre> -l <list_size> -r -p -f]
+	Usage : appstat -a <app_id> | -b <bundle_id> | -d <developer> | -s <search> [-r] [-p -m -f] [-g <genre> -c <country> -l <list_size>]
 		-s <search> : search an app
-		-a <app_id> : the app ID  to use
-		-b <bundle_id> : the start of the bundle ID to use
-		-c <country_code> : the country code to use for the search option (ex: US)
-		-g <genre> : the genre code (ex: 6012)
+		-a <app_id> : the app ID to use
+		-b <bundle_id> : the start of the bundle ID to match (top lists only)
+		-d <developer> : the developer name
+		-c <country_code> : restrict to one country (ex: US), also used for -s
+		-g <genre> : genre ID (ex: 6014 for Games)
 		-r : list reviews
 		-f : search top free
 		-p : search top paid
 		-m : search top grossing
-		-l <list_size> : 1-200
+		-l <list_size> : 1-100 (-p, -f or -m required)
 	
 	example:
-		appstat -s Omnistat -g 6002
+		appstat -s Omnistat -f -g 6002
 		appstat -a 898245825 -r
 		appstat -b ch.swift -m -g 6017
-
-
-![](http://oi57.tinypic.com/34pdkll.jpg "Example")
