@@ -1,20 +1,17 @@
 CC=clang
 FRAMEWORKS= -framework Foundation
-LIBRARIES= -lobjc
 
 PRODUCT=appstat
 SRC=appstat.m
 
 CFLAGS=-Wall -g
-LDFLAGS=$(LIBRARIES) $(FRAMEWORKS)
+LDFLAGS=$(FRAMEWORKS)
 
 #iOS
-IOS_ARCHS=armv7 armv7s arm64
-SDKVERSION=
-SDKMINVERSION=7.0
-SYSROOT=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS$(SDKVERSION).sdk
+IOS_ARCHS=arm64
+SDKMINVERSION=12.0
 
-build-ios-arch=$(CC) $(SRC) -fobjc-arc $(CFLAGS) $(LDFLAGS) -isysroot $(SYSROOT) -mios-version-min=$(SDKMINVERSION) $(FRAMEWORKS) -arch $(1) -o $(PRODUCT)_$(1)
+build-ios-arch=xcrun --sdk iphoneos $(CC) $(SRC) -fobjc-arc $(CFLAGS) $(LDFLAGS) -target $(1)-apple-ios$(SDKMINVERSION) -o $(PRODUCT)_$(1)
 
 
 .PHONY: all ios clean install
@@ -27,9 +24,10 @@ appstat : $(SRC)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -fobjc-arc -o $(PRODUCT)
 
 appstat_ios : $(SRC)
-	rm -f $(PRODUCT)_fat
+	rm -f $(PRODUCT)_ios
 	$(foreach arch,$(IOS_ARCHS),$(call build-ios-arch,$(arch));)
 	lipo -create $(addprefix ${PRODUCT}_,${IOS_ARCHS}) -output $(PRODUCT)_ios
+	rm -f $(addprefix ${PRODUCT}_,${IOS_ARCHS})
 
 clean :
 	rm -rf ./*.o ./*.dSYM
