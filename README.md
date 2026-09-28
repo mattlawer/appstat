@@ -14,7 +14,7 @@ Get AppStore apps reviews, and rankings worldwide for every category.
 		-b <bundle_id> : the start of the bundle ID to match (top lists only)
 		-d <developer> : the developer name
 		-c <country_code> : restrict to one country (ex: US), also used for -s
-		-g <genre> : genre ID (ex: 6014 for Games)
+		-g <genre> : genre ID (ex: 6014 for Games), '?' to list genres
 		-r : list reviews
 		-f : search top free
 		-p : search top paid
