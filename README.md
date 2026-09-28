@@ -22,6 +22,6 @@ Get AppStore apps reviews, and rankings worldwide for every category.
 		-l <list_size> : 1-100 (-p, -f or -m required)
 	
 	example:
-		appstat -s Omnistat -f -g 6002
+		appstat -s Omnistat -g 6002
 		appstat -a 898245825 -r
 		appstat -b ch.swift -m -g 6017
