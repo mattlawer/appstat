@@ -22,9 +22,20 @@ static NSURL* reviewsURL(NSString *countryCode, NSString *appID) {
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/%@/rss/customerreviews/id=%@/sortBy=mostRecent/json", countryCode, appID]];
 }
 
+static NSDictionary* genres(void) {
+    return @{@6000: @"Business", @6001: @"Weather", @6002: @"Utilities", @6003: @"Travel", @6004: @"Sports", @6005: @"Social Networking", @6006: @"Reference", @6007: @"Productivity", @6008: @"Photo & Video", @6009: @"News", @6010: @"Navigation", @6011: @"Music", @6012: @"Lifestyle", @6013: @"Health & Fitness", @6014: @"Games", @6015: @"Finance", @6016: @"Entertainment", @6017: @"Education", @6018: @"Books", @6020: @"Medical", @6021: @"Magazines & Newspapers", @6022: @"Catalogs", @6023: @"Food & Drink", @6024: @"Shopping", @6025: @"Stickers", @6026: @"Developer Tools", @6027: @"Graphics & Design"};
+}
+
 static NSString* genreName(int genre) {
-    NSDictionary *genres = @{@6000: @"Business", @6001: @"Weather", @6002: @"Utilities", @6003: @"Travel", @6004: @"Sports", @6005: @"Social Networking", @6006: @"Reference", @6007: @"Productivity", @6008: @"Photo & Video", @6009: @"News", @6010: @"Navigation", @6011: @"Music", @6012: @"Lifestyle", @6013: @"Health & Fitness", @6014: @"Games", @6015: @"Finance", @6016: @"Entertainment", @6017: @"Education", @6018: @"Books", @6020: @"Medical", @6021: @"Magazines & Newspapers", @6022: @"Catalogs", @6023: @"Food & Drink", @6024: @"Shopping", @6025: @"Stickers", @6026: @"Developer Tools", @6027: @"Graphics & Design"};
-    return genres[@(genre)];
+    return genres()[@(genre)];
+}
+
+static void print_genres(void) {
+    printf("genres:\n");
+    NSDictionary *map = genres();
+    for (NSNumber *genreID in [[map allKeys] sortedArrayUsingSelector:@selector(compare:)]) {
+        printf("\t%d : %s\n", genreID.intValue, [map[genreID] UTF8String]);
+    }
 }
 
 static NSURL* topURL(int cType, NSString *countryCode, int genre, int limit) {
@@ -56,7 +67,7 @@ static void print_usage(void) {
     printf("\t-f : search top free\n");
     printf("\t-m : search top grossing\n");
     printf("\t-p : search top paid\n");
-    printf("\t-g <genre> : genre ID (ex: 6014 for Games)\n");
+    printf("\t-g <genre> : genre ID (ex: 6014 for Games), '?' to list genres\n");
     printf("\t-l <list_size> : 1-100 (-p, -f or -m required)\n");
 
 
@@ -108,6 +119,15 @@ int main(int argc, char *const argv[]) {
                 break;
             case 'g':
                 genre = atoi(optarg);
+                if (genreName(genre) == nil) {
+                    if (strcmp(optarg, "?") == 0) {
+                        print_genres();
+                        return 0;
+                    }
+                    fprintf(stderr, "unknown genre `%s'\n", optarg);
+                    print_genres();
+                    return 1;
+                }
                 break;
             case 'r':
                 rflag = 1;
