@@ -13,10 +13,9 @@ static NSURL* searchURL(NSString *countryCode, NSString *search) {
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/search?term=%@&country=%@&entity=software", encodeURLString(search), countryCode]];
 }
 
-/* not used yet
- static NSURL* lookupURL(NSString *appID) {
- return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/lookup?id=%@", appID]];
- }*/
+static NSURL* lookupURL(NSString *appID, NSString *countryCode) {
+    return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/lookup?id=%@&country=%@", appID, countryCode]];
+}
 
 static NSURL* reviewsURL(NSString *countryCode, NSString *appID) {
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://itunes.apple.com/%@/rss/customerreviews/id=%@/sortBy=mostRecent/json", countryCode, appID]];
@@ -67,11 +66,11 @@ static void print_usage(void) {
     printf("\t-f : search top free\n");
     printf("\t-m : search top grossing\n");
     printf("\t-p : search top paid\n");
-    printf("\t-g <genre> : genre ID (ex: 6014 for Games), '?' to list genres\n");
-    printf("\t-l <list_size> : 1-100 (-p, -f or -m required)\n");
+    printf("\t-g <genre> : genre ID (ex: 6014 for Games), 0 for all, '?' to list genres\n");
+    printf("\t-l <list_size> : 1-100\n");
 
-
-    printf("\nexample:\n\tappstat -s Omnistat -p\n");
+    printf("\nwith -a or -s, unspecified options default to the app's own genre\nand chart (top paid if it's a paid app, top free otherwise)\n");
+    printf("\nexample:\n\tappstat -s Omnistat\n");
     printf("\tappstat -a 898245825 -r\n");
     exit(0);
 }
@@ -81,6 +80,7 @@ static NSArray* getEntries(id jsonObject);
 static void scanTopApps(NSString *appid, NSString *artist, NSString *bundleid, int cType, int genre, int listsize);
 static void scanReviews(NSString *appid);
 static NSString* searchApp(NSString *query, NSString *country);
+static NSDictionary* lookupApp(NSString *appID, NSString *country);
 
 int main(int argc, char *const argv[]) {
 
@@ -88,7 +88,7 @@ int main(int argc, char *const argv[]) {
 
         int listsize = 100; // list size
         int genre = 0;
-        int rflag=0,pflag=0,fflag=0,mflag=0;
+        int rflag=0,pflag=0,fflag=0,mflag=0,gflag=0;
 
         NSString *appid = nil;
         NSString *bundleid = nil;
@@ -119,7 +119,7 @@ int main(int argc, char *const argv[]) {
                 break;
             case 'g':
                 genre = atoi(optarg);
-                if (genreName(genre) == nil) {
+                if (genreName(genre) == nil && strcmp(optarg, "0") != 0) { // -g 0 : all categories
                     if (strcmp(optarg, "?") == 0) {
                         print_genres();
                         return 0;
@@ -128,6 +128,7 @@ int main(int argc, char *const argv[]) {
                     print_genres();
                     return 1;
                 }
+                gflag = 1;
                 break;
             case 'r':
                 rflag = 1;
@@ -170,6 +171,24 @@ int main(int argc, char *const argv[]) {
             }
         }
 
+        // default unspecified genre/chart from the app's own metadata
+        int noChart = (pflag == 0 && fflag == 0 && mflag == 0);
+        if (appid && (!noChart || rflag == 0) && (gflag == 0 || noChart)) {
+            NSDictionary *app = lookupApp(appid, country ?: @"US");
+            if (app) {
+                if (gflag == 0) {
+                    genre = [app[@"primaryGenreId"] intValue];
+                }
+                if (noChart) {
+                    if ([app[@"price"] doubleValue] > 0) {
+                        pflag = 1;
+                    } else {
+                        fflag = 1;
+                    }
+                }
+            }
+        }
+
         countries = @[@"AF", @"AL", @"DZ", @"AO", @"AI", @"AG", @"AR", @"AM", @"AU", @"AT", @"AZ", @"BS", @"BH", @"BB", @"BY", @"BE", @"BZ", @"BJ", @"BM", @"BT", @"BO", @"BA", @"BW", @"BR", @"VG", @"BN", @"BG", @"BF", @"KH", @"CM", @"CA", @"CV", @"KY", @"TD", @"CL", @"CN", @"CO", @"CG", @"CD", @"CR", @"CI", @"HR", @"CY", @"CZ", @"DK", @"DM", @"DO", @"EC", @"EG", @"SV", @"EE", @"FJ", @"FI", @"FR", @"GA", @"GM", @"GE", @"DE", @"GH", @"GR", @"GD", @"GT", @"GW", @"GY", @"HN", @"HK", @"HU", @"IS", @"IN", @"ID", @"IQ", @"IE", @"IL", @"IT", @"JM", @"JP", @"JO", @"KZ", @"KE", @"KR", @"XK", @"KW", @"KG", @"LA", @"LV", @"LB", @"LR", @"LY", @"LT", @"LU", @"MO", @"MK", @"MG", @"MW", @"MY", @"MV", @"ML", @"MT", @"MR", @"MU", @"MX", @"FM", @"MD", @"MN", @"MS", @"ME", @"MA", @"MZ", @"MM", @"NA", @"NR", @"NP", @"NL", @"NZ", @"NI", @"NE", @"NG", @"NO", @"OM", @"PK", @"PW", @"PA", @"PG", @"PY", @"PE", @"PH", @"PL", @"PT", @"QA", @"RO", @"RU", @"RW", @"ST", @"SA", @"SN", @"RS", @"SC", @"SL", @"SG", @"SK", @"SI", @"SB", @"ZA", @"ES", @"LK", @"KN", @"LC", @"VC", @"SR", @"SZ", @"SE", @"CH", @"TW", @"TJ", @"TZ", @"TH", @"TO", @"TT", @"TN", @"TR", @"TM", @"TC", @"UG", @"GB", @"UA", @"AE", @"UY", @"US", @"UZ", @"VU", @"VE", @"VN", @"YE", @"ZM", @"ZW"];
         if (country) {
             countries = @[[country uppercaseString]];
@@ -181,7 +200,7 @@ int main(int argc, char *const argv[]) {
         operationQueue.maxConcurrentOperationCount = 10;
 
         if (rflag == 0 && pflag == 0 && fflag == 0  && mflag == 0) {
-            fprintf(stderr, "use -f or -p or -m or -r to search in top free/paid/grossing or list reviews\n");
+            fprintf(stderr, "use -f or -p or -m or -r to search in top free/paid/grossing or list reviews\n"); // only reachable without an app ID or when the lookup failed
         }
 
         if (rflag) {
@@ -355,6 +374,15 @@ static void scanReviews(NSString *appid) {
         }];
 
     }
+}
+
+static NSDictionary* lookupApp(NSString *appID, NSString *country) {
+    NSError *error = nil;
+    NSDictionary *result = JSONObjectFromURL(lookupURL(appID, country), &error);
+    if (!error && [result[@"results"] isKindOfClass:[NSArray class]] && [result[@"results"] count] > 0) {
+        return result[@"results"][0];
+    }
+    return nil;
 }
 
 static NSString* searchApp(NSString *query, NSString *country) {

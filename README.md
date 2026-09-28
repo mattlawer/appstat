@@ -14,14 +14,18 @@ Get AppStore apps reviews, and rankings worldwide for every category.
 		-b <bundle_id> : the start of the bundle ID to match (top lists only)
 		-d <developer> : the developer name
 		-c <country_code> : restrict to one country (ex: US), also used for -s
-		-g <genre> : genre ID (ex: 6014 for Games), '?' to list genres
+		-g <genre> : genre ID (ex: 6014 for Games), 0 for all, '?' to list genres
 		-r : list reviews
 		-f : search top free
 		-p : search top paid
 		-m : search top grossing
-		-l <list_size> : 1-100 (-p, -f or -m required)
+		-l <list_size> : 1-100
+	
+	With -a or -s, unspecified options default to the app's own genre and
+	chart (top paid if it's a paid app, top free otherwise), so `appstat -s Omnistat`
+	just works.
 	
 	example:
-		appstat -s Omnistat -g 6002
+		appstat -s Omnistat
 		appstat -a 898245825 -r
 		appstat -b ch.swift -m -g 6017
